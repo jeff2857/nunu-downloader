@@ -23,17 +23,24 @@ fn main() {
     let mut arg_config = ArgConfig::default();
 
     if let Some(url) = matches.get_one::<String>("url") {
-        arg_config.url = url.to_string();
+        let mut url = url.to_string();
+        if url.ends_with("/") {
+            url.push_str("index.html");
+        }
+        if !url.ends_with("index.html") {
+            url.push_str("/index.html");
+        }
+        arg_config.url = url;
     }
 
     if let Some(file_path) = matches.get_one::<PathBuf>("output") {
         arg_config.output = file_path.to_str().unwrap().to_string();
     }
 
-    println!("argConfig: {:?}", arg_config);
+    //println!("argConfig: {:?}", arg_config);
 
     // validate url and file_path
-    if let Err(url_invalid) = url_parser::UrlParser::parse_index_page(&arg_config.output) {
+    if let Err(url_invalid) = url_parser::UrlParser::parse_index_page(&arg_config.url) {
         println!("{}", url_invalid);
     }
     // parse url
