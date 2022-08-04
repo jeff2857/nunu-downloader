@@ -2,11 +2,35 @@ use reqwest::StatusCode;
 
 use anyhow::{anyhow, Result};
 
+use crate::parser::page_parser::PageParser;
+
 pub struct Fetcher;
 
 impl Fetcher {
-    pub async fn fetch_index_page<T: AsRef<str>>(url: T) -> Result<()> {
+    pub async fn download<T: AsRef<str>>(url: T) -> Result<()> {
+        let body = Self::fetch_index_page(url).await?;
+        let novel = PageParser::parse_index(body);
+
+        for chapter in novel.chapters {
+            let url = chapter.url.clone();
+            tokio::spawn(async move {
+                match Self::fetch_chapter_page(&url).await {
+                    Err(err) => {
+                        println!("Err: {:?}", err);
+                    }
+                    Ok(body) => {
+                        let chapter_parsed = PageParser::parse_chapter_page(body);
+                    }
+                }
+            });
+        }
+
+        Ok(())
+    }
+
+    async fn fetch_index_page<T: AsRef<str>>(url: T) -> Result<String> {
         // TODO: change request to `Client`
+        // TODO: retry when error happens
         let url = url.as_ref();
         let res = reqwest::get(url).await?;
         let status_code = res.status();
@@ -15,9 +39,11 @@ impl Fetcher {
         }
 
         let body = res.text_with_charset("gb2312").await?;
-        println!("body: {}", body);
+        Ok(body)
+    }
 
-        Ok(())
+    async fn fetch_chapter_page<T: AsRef<str>>(url: T) -> Result<String> {
+        Ok("".into())
     }
 }
 

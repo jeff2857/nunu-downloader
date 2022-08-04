@@ -10,6 +10,24 @@ mod req;
 
 #[tokio::main]
 async fn main() {
+    let arg_config = parse_cli_arg();
+
+    if let Err(url_invalid) = url_parser::UrlParser::parse_index_page(&arg_config.url) {
+        println!("{}", url_invalid);
+    }
+
+    if let Err(err) = Fetcher::download(arg_config.url).await {
+        println!("Err: {:?}", err);
+    }
+}
+
+#[derive(Default, Debug)]
+struct ArgConfig {
+    url: String,
+    output: String,
+}
+
+fn parse_cli_arg() -> ArgConfig {
     let matches = command!()
         .arg(arg!(
             <url> "Url of the novel's index page"
@@ -40,21 +58,5 @@ async fn main() {
         arg_config.output = file_path.to_str().unwrap().to_string();
     }
 
-    //println!("argConfig: {:?}", arg_config);
-
-    // validate url and file_path
-    if let Err(url_invalid) = url_parser::UrlParser::parse_index_page(&arg_config.url) {
-        println!("{}", url_invalid);
-    }
-
-    if let Err(err) = Fetcher::fetch_index_page(arg_config.url).await {
-        println!("Err: {:?}", err);
-    }
-    // parse url
-}
-
-#[derive(Default, Debug)]
-struct ArgConfig {
-    url: String,
-    output: String,
+    arg_config
 }
