@@ -3,10 +3,13 @@ use std::path::PathBuf;
 use clap::{arg, command, value_parser};
 
 use self::parser::url_parser;
+use self::req::fetcher::Fetcher;
 
 mod parser;
+mod req;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let matches = command!()
         .arg(arg!(
             <url> "Url of the novel's index page"
@@ -42,6 +45,10 @@ fn main() {
     // validate url and file_path
     if let Err(url_invalid) = url_parser::UrlParser::parse_index_page(&arg_config.url) {
         println!("{}", url_invalid);
+    }
+
+    if let Err(err) = Fetcher::fetch_index_page(arg_config.url).await {
+        println!("Err: {:?}", err);
     }
     // parse url
 }
