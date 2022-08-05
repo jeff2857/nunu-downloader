@@ -5,8 +5,12 @@ pub struct PageParser;
 impl PageParser {
     pub fn parse_index(body: String) -> Novel {
         let mut novel = Novel::default();
+
         let title = Self::find_novel_title(&body);
+        let author = Self::find_novel_author(&body);
+
         novel.title = title;
+        novel.author = author;
 
         novel
     }
@@ -22,6 +26,18 @@ impl PageParser {
         let title = &re.captures(body).unwrap()["title"];
 
         title.to_string()
+    }
+
+    fn find_novel_author(body: &str) -> String {
+        let author_pattern = r"\u4f5c\u8005\uff1a(?P<author>.*)\s\u53d1\u5e03\u65f6\u95f4";
+        let re = Regex::new(author_pattern).unwrap();
+        let author = &re.captures(body).unwrap()["author"];
+
+        author.to_string()
+    }
+
+    fn find_novel_chapters(body: &str) -> Vec<Chapter> {
+        vec![]
     }
 }
 
