@@ -10,6 +10,7 @@ impl Fetcher {
     pub async fn download<T: AsRef<str>>(url: T) -> Result<()> {
         let body = Self::fetch_index_page(url).await?;
         let novel = PageParser::parse_index(body);
+        println!("novel: {:#?}", novel);
 
         for chapter in novel.chapters {
             let url = chapter.url.clone();
