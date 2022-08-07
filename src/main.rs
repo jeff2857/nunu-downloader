@@ -1,24 +1,32 @@
+use std::env;
 use std::path::PathBuf;
 
+use anyhow::Result;
 use clap::{arg, command, value_parser};
 
-use self::parser::url_parser;
 use self::req::fetcher::Fetcher;
 
 mod parser;
 mod req;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let arg_config = parse_cli_arg();
 
-    if let Err(url_invalid) = url_parser::UrlParser::parse_index_page(&arg_config.url) {
-        println!("{}", url_invalid);
+    let file_path = if arg_config.output == "" {
+        None
+    } else {
+        Some(arg_config.output.as_str())
+    };
+
+    match Fetcher::download(arg_config.url, file_path).await {
+        Err(err) => {
+            println!("Err: {:?}", err);
+        }
+        Ok(_) => {}
     }
 
-    if let Err(err) = Fetcher::download(arg_config.url).await {
-        println!("Err: {:?}", err);
-    }
+    Ok(())
 }
 
 #[derive(Default, Debug)]
@@ -52,10 +60,6 @@ fn parse_cli_arg() -> ArgConfig {
             url.push_str("/index.html");
         }
         arg_config.url = url;
-    }
-
-    if let Some(file_path) = matches.get_one::<PathBuf>("output") {
-        arg_config.output = file_path.to_str().unwrap().to_string();
     }
 
     arg_config

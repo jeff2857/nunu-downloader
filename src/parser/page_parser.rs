@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use regex::Regex;
 
 pub struct PageParser;
@@ -14,12 +16,20 @@ impl PageParser {
 
         novel.title = title;
         novel.author = author;
+        novel.chapters = chapters;
 
         novel
     }
 
-    pub fn parse_chapter_page(body: String) -> Chapter {
-        Chapter::default()
+    pub fn parse_chapter_page(body: String) -> String {
+        let body = Self::trim_chapter_body(&body);
+        let mut content = body
+            .replace("&nbsp", " ")
+            .replace("<br>", "\n")
+            .replace("\"", "");
+        content.push_str("\n\n");
+
+        content
     }
 
     fn trim_body(body: &str) -> String {
@@ -34,6 +44,20 @@ impl PageParser {
             let e = body[begin..end].rfind("</table>").unwrap();
             end = begin + e;
         }
+
+        body[begin..end].to_string()
+    }
+
+    fn trim_chapter_body(body: &str) -> String {
+        let mut begin = 0;
+        for _ in 0..4 {
+            let e = body[begin..].find(r"</table>").unwrap();
+            begin += e + 1;
+        }
+        let mut end = begin + body[begin..].find("</table>").unwrap();
+
+        begin += body[begin..end].find("<p>").unwrap() + 3;
+        end = begin + body[begin..end].rfind("</p>").unwrap();
 
         body[begin..end].to_string()
     }
@@ -56,13 +80,22 @@ impl PageParser {
     }
 
     fn find_novel_chapters(body: &str) -> Vec<Chapter> {
-        let chapter_pattern = r#"><a href="(?P<href>.*)">(?P<chp>.*)</a></td>"#;
+        let chapter_pattern = r#"><a href="(?P<href>.*)">(?P<title>.*)</a></td>"#;
         let re = Regex::new(chapter_pattern).unwrap();
+        let mut chapters = vec![];
+
         for cap in re.captures_iter(body) {
-            let chp = &cap["chp"];
-            println!("chp: {}", chp);
+            let title = &cap["title"];
+            let href = &cap["href"];
+            let chapter = Chapter {
+                title: title.to_string(),
+                url: href.to_string(),
+                content: Arc::new(Mutex::new(String::new())),
+            };
+            chapters.push(chapter);
         }
-        vec![]
+
+        chapters
     }
 }
 
@@ -76,6 +109,6 @@ pub struct Novel {
 #[derive(Default, Debug)]
 pub struct Chapter {
     pub title: String,
-    pub content: String,
+    pub content: Arc<Mutex<String>>,
     pub url: String,
 }
