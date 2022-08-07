@@ -38,11 +38,14 @@ impl Fetcher {
         let body = Self::fetch_index_page(url).await?;
         let novel = PageParser::parse_index(body);
 
+        println!("Downloading 《{}》 作者: {} ...", novel.title, novel.author);
+
         for chapter in &novel.chapters {
             let url = chapter.url.clone();
+            let chapter_title = chapter.title.clone();
             let chapter_content = Arc::clone(&chapter.content);
             tokio::spawn(async move {
-                match Self::fetch_chapter_page(&url).await {
+                match Self::fetch_chapter_page(&url, Some(&chapter_title)).await {
                     Err(err) => {
                         println!("Err: {:?}", err);
                     }
@@ -52,7 +55,9 @@ impl Fetcher {
                         *content = chapter_parsed;
                     }
                 }
-            });
+            })
+            .await
+            .unwrap();
         }
 
         Ok(novel)
@@ -76,8 +81,13 @@ impl Fetcher {
         Ok(body)
     }
 
-    async fn fetch_chapter_page<T: AsRef<str>>(url: T) -> Result<String> {
+    async fn fetch_chapter_page<T: AsRef<str>>(url: T, title: Option<&str>) -> Result<String> {
         let url = unsafe { format!("{}{}", INDEX_URL, url.as_ref()) };
+
+        if let Some(title) = title {
+            println!("Downloading {} ...", title);
+        }
+
         let res = reqwest::get(url).await?;
         let status_code = res.status();
         if status_code != StatusCode::OK {
@@ -90,10 +100,16 @@ impl Fetcher {
 
     pub async fn save_to_file(novel: &Novel, path: Option<&str>) -> Result<()> {
         let path = match path {
-            Some(p) => p.to_owned(),
+            Some(p) => {
+                let mut p = p.to_string();
+                if !p.ends_with(".txt") {
+                    p.push_str(".txt");
+                }
+                p
+            }
             None => {
                 let mut current_dir = env::current_dir().unwrap();
-                current_dir = current_dir.join(format!("{}.txt", novel.title));
+                current_dir = current_dir.join(format!("{}_{}.txt", novel.title, novel.author));
                 current_dir.to_str().unwrap().to_owned()
             }
         };
@@ -103,7 +119,7 @@ impl Fetcher {
             let content = Arc::clone(&chp.content);
             let content = content.lock().unwrap();
             let content = content.clone();
-            file.write(content.as_bytes()).await?;
+            file.write_all(content.as_bytes()).await?;
         }
 
         Ok(())

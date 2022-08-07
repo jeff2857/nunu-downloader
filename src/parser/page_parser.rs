@@ -24,9 +24,12 @@ impl PageParser {
     pub fn parse_chapter_page(body: String) -> String {
         let body = Self::trim_chapter_body(&body);
         let mut content = body
-            .replace("&nbsp", " ")
+            .replace("&nbsp;", " ")
+            .replace("&quot;", "\"")
             .replace("<br>", "\n")
-            .replace("\"", "");
+            .replace("<br/>", "\n")
+            .replace("<br />", "\n");
+        //.replace("\"", "");
         content.push_str("\n\n");
 
         content

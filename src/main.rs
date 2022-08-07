@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::{arg, command, value_parser};
 
+use self::parser::url_parser::UrlParser;
 use self::req::fetcher::Fetcher;
 
 mod parser;
@@ -12,6 +13,10 @@ mod req;
 #[tokio::main]
 async fn main() -> Result<()> {
     let arg_config = parse_cli_arg();
+    if let Err(err) = UrlParser::validate_index_url(&arg_config.url) {
+        println!("Err: {:?}", err);
+        return Err(err);
+    }
 
     let file_path = if arg_config.output == "" {
         None
